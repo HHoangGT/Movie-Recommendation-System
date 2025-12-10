@@ -158,4 +158,3 @@ test_*
 .env.deploy
 visualize_*
 run_auto_inference.py
-*.csv
