@@ -1,0 +1,17 @@
+anyio
+asyncer
+dspy
+fastapi
+loguru
+motor
+openai
+openpyxl
+pandas
+pre-commit
+pydantic
+pydantic_settings
+pyjwt
+pymongo
+slowapi
+tiktoken
+uvicorn

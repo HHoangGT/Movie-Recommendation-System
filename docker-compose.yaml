@@ -1,0 +1,17 @@
+services:
+  movie-recommend-api:
+    image: movie-recommend-api
+    build: .
+    container_name: movie-recommend-api
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - DOCKER_ENV=true
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    env_file:
+      - .env
