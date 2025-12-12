@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Movie Recommender - Unified System</title>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap"
+			rel="stylesheet"
+		/>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+		<link rel="stylesheet" href="/static/css/style.css?v=5" />
+	</head>
+	<body class="bg-gray-900 text-white min-h-screen">
+		<!-- Check role and redirect if needed -->
+		<script>
+			if (!sessionStorage.getItem("userRole")) {
+				window.location.href = "/login";
+			}
+		</script>
+
+		<!-- Header -->
+		<header class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+			<div class="flex justify-between items-center max-w-7xl mx-auto">
+				<div class="flex items-center space-x-3">
+					<span class="text-2xl">🎬</span>
+					<h1 class="text-2xl font-bold text-amber-400">RecSys Lab</h1>
+					<span class="text-sm text-gray-400 ml-4" id="userRoleText">User</span>
+				</div>
+				<div class="flex items-center space-x-4">
+					<span class="text-sm text-gray-400">Active Model:</span>
+					<span
+						id="activeModelBadge"
+						class="px-3 py-1 bg-emerald-600 text-white text-sm font-medium rounded-full"
+						>NextItNet</span
+					>
+					<span
+						id="statusIndicator"
+						class="w-3 h-3 rounded-full bg-yellow-500"
+					></span>
+					<span id="statusText" class="text-sm text-gray-400"
+						>Connecting...</span
+					>
+					<button
+						onclick="logout()"
+						class="ml-4 px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition"
+					>
+						Đăng xuất
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<!-- Main Navigation Tabs -->
+		<div class="bg-gray-800 border-b border-gray-700">
+			<div class="max-w-7xl mx-auto px-6">
+				<nav class="flex space-x-8" id="mainNavigation">
+					<button
+						class="main-tab active py-4 px-1 border-b-2 border-amber-400 text-amber-400 font-medium"
+						data-tab="user"
+					>
+						User Interface
+					</button>
+					<button
+						class="main-tab hidden py-4 px-1 border-b-2 border-transparent text-gray-400 hover:text-white font-medium"
+						data-tab="admin"
+						id="adminTab"
+					>
+						Admin View
+					</button>
+					<button
+						class="main-tab hidden py-4 px-1 border-b-2 border-transparent text-gray-400 hover:text-white font-medium"
+						data-tab="datascientist"
+						id="dataScientistTab"
+					>
+						Data Scientist
+					</button>
+				</nav>
+			</div>
+		</div>
+
+		<!-- ============================================ -->
+		<!-- USER INTERFACE SECTION -->
+		<!-- ============================================ -->
+		<div id="tab-user" class="main-content active">
+			<main
+				class="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6"
+			>
+				<!-- Left Panel - Search & Browse -->
+				<section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+					<h2 class="text-xl font-semibold text-white mb-4">Find Movies</h2>
+
+					<div class="flex space-x-2 mb-4">
+						<input
+							type="text"
+							id="searchInput"
+							placeholder="Search movies..."
+							class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-amber-400"
+						/>
+						<button
+							id="searchBtn"
+							class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-gray-900 font-medium rounded-lg transition"
+						>
+							Search
+						</button>
+					</div>
+
+					<div
+						id="searchResults"
+						class="space-y-2 max-h-64 overflow-y-auto mb-6"
+					>
+						<p class="text-gray-500 text-sm">
+							Search for movies to add to your history
+						</p>
+					</div>
+
+					<div>
+						<h3 class="text-lg font-medium text-white mb-3">Popular Movies</h3>
+						<div id="popularMovies" class="space-y-2 max-h-96 overflow-y-auto">
+							<!-- Populated by JS -->
+						</div>
+						<button
+							id="loadMoreBtn"
+							class="w-full mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+						>
+							Load More
+						</button>
+					</div>
+				</section>
+
+				<!-- Center Panel - Recommendations -->
+				<section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+					<div class="flex justify-between items-center mb-4">
+						<h2 class="text-xl font-semibold text-white">
+							Recommended For You
+						</h2>
+						<button
+							id="refreshRecsBtn"
+							class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+							title="Refresh"
+						>
+							<i data-lucide="refresh-cw" class="w-5 h-5"></i>
+						</button>
+					</div>
+
+					<div
+						id="recommendations"
+						class="space-y-3 max-h-[600px] overflow-y-auto"
+					>
+						<div id="emptyRecommendations" class="text-center py-12">
+							<div class="text-5xl mb-4">🎬</div>
+							<h3 class="text-lg font-medium text-white">
+								No Recommendations Yet
+							</h3>
+							<p class="text-gray-400 text-sm mt-2">
+								Add some movies to your watch history to get personalized
+								recommendations!
+							</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- Right Panel - User History -->
+				<section class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+					<div class="flex justify-between items-center mb-4">
+						<h2 class="text-xl font-semibold text-white">Your Watch History</h2>
+						<span
+							id="historyCount"
+							class="px-2 py-1 bg-gray-700 text-amber-400 text-sm font-medium rounded"
+							>0</span
+						>
+					</div>
+
+					<div id="historyList" class="space-y-2 max-h-96 overflow-y-auto mb-4">
+						<div id="emptyHistory" class="text-center py-8">
+							<div class="text-4xl mb-3">📝</div>
+							<p class="text-gray-400">No movies in your history</p>
+							<p class="text-gray-500 text-sm mt-1">
+								Click on movies to add them
+							</p>
+						</div>
+					</div>
+
+					<div class="flex space-x-2">
+						<button
+							id="clearHistoryBtn"
+							class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+						>
+							Clear
+						</button>
+						<button
+							id="getRecsBtn"
+							class="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-gray-900 font-medium rounded-lg transition"
+						>
+							Get Recommendations
+						</button>
+					</div>
+				</section>
+			</main>
+		</div>
+
+		<!-- ============================================ -->
+		<!-- ADMIN SECTION -->
+		<!-- ============================================ -->
+		<div id="tab-admin" class="main-content hidden bg-gray-100 min-h-screen">
+			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+				<!-- Admin Header -->
+				<div class="bg-white p-6 rounded-xl shadow-sm mb-6">
+					<div class="flex items-center space-x-3">
+						<div class="p-3 bg-blue-100 rounded-lg">
+							<i data-lucide="shield" class="w-6 h-6 text-blue-600"></i>
+						</div>
+						<div>
+							<h2 class="text-2xl font-bold text-gray-900">
+								Admin Control Panel
+							</h2>
+							<p class="text-sm text-gray-600">Xin chào, Admin</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- Admin Tabs -->
+				<div class="bg-white rounded-xl shadow-sm mb-6">
+					<nav class="flex border-b border-gray-200">
+						<button
+							class="admin-tab active px-6 py-4 border-b-2 border-blue-600 text-blue-600 font-medium"
+							data-admin-tab="overview"
+						>
+							Tổng quan
+						</button>
+						<button
+							class="admin-tab px-6 py-4 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium"
+							data-admin-tab="movies"
+						>
+							Quản lý Phim
+						</button>
+						<button
+							class="admin-tab px-6 py-4 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium"
+							data-admin-tab="users"
+						>
+							Quản lý Người dùng
+						</button>
+					</nav>
+				</div>
+
+				<!-- Admin Content Pages -->
+				<div id="admin-page-overview" class="admin-page-content">
+					<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="text-sm text-gray-600">Total Movies</p>
+									<p
+										class="text-2xl font-bold text-gray-900"
+										id="adminTotalMovies"
+									>
+										0
+									</p>
+								</div>
+								<i data-lucide="film" class="w-8 h-8 text-blue-600"></i>
+							</div>
+						</div>
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="text-sm text-gray-600">Active Users</p>
+									<p
+										class="text-2xl font-bold text-gray-900"
+										id="adminTotalUsers"
+									>
+										0
+									</p>
+								</div>
+								<i data-lucide="users" class="w-8 h-8 text-emerald-600"></i>
+							</div>
+						</div>
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="text-sm text-gray-600">Active Model</p>
+									<p
+										class="text-lg font-bold text-gray-900"
+										id="adminActiveModel"
+									>
+										NextItNet
+									</p>
+								</div>
+								<i data-lucide="cpu" class="w-8 h-8 text-purple-600"></i>
+							</div>
+						</div>
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="text-sm text-gray-600">System Status</p>
+									<p
+										class="text-lg font-bold text-emerald-600"
+										id="adminSystemStatus"
+									>
+										Ready
+									</p>
+								</div>
+								<i data-lucide="activity" class="w-8 h-8 text-amber-600"></i>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="admin-page-movies" class="admin-page-content hidden">
+					<div class="bg-white p-6 rounded-xl shadow-sm">
+						<div class="flex justify-between items-center mb-4">
+							<h3 class="text-xl font-semibold text-gray-900">Quản lý Phim</h3>
+							<button
+								class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+							>
+								+ Thêm phim mới
+							</button>
+						</div>
+
+						<div class="mb-4">
+							<input
+								type="search"
+								id="adminMovieSearch"
+								placeholder="Tìm kiếm theo ID, Tên phim..."
+								class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+
+						<div class="overflow-x-auto">
+							<table class="min-w-full divide-y divide-gray-200">
+								<thead class="bg-gray-50">
+									<tr>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											ID
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Tên Phim
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Thể Loại
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Năm
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Xếp Hạng
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Lượt Xem
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Hành Động
+										</th>
+									</tr>
+								</thead>
+								<tbody
+									id="adminMoviesTable"
+									class="bg-white divide-y divide-gray-200"
+								>
+									<!-- Populated by JS -->
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<div id="admin-page-users" class="admin-page-content hidden">
+					<div class="bg-white p-6 rounded-xl shadow-sm">
+						<h3 class="text-xl font-semibold text-gray-900 mb-4">
+							Quản lý Người dùng
+						</h3>
+						<div class="overflow-x-auto">
+							<table class="min-w-full divide-y divide-gray-200">
+								<thead class="bg-gray-50">
+									<tr>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											User ID
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											History Length
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Last Active
+										</th>
+										<th
+											class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+										>
+											Actions
+										</th>
+									</tr>
+								</thead>
+								<tbody
+									id="adminUsersTable"
+									class="bg-white divide-y divide-gray-200"
+								>
+									<!-- Populated by JS -->
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ============================================ -->
+		<!-- DATA SCIENTIST SECTION -->
+		<!-- ============================================ -->
+		<div
+			id="tab-datascientist"
+			class="main-content hidden bg-gray-100 min-h-screen"
+		>
+			<!-- DS Navigation Tabs -->
+			<div class="bg-white shadow-sm">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<nav class="flex space-x-8">
+						<button
+							id="ds-tab-dashboard"
+							data-ds-tab="dashboard"
+							class="ds-nav-tab border-b-2 border-emerald-500 text-emerald-600 font-semibold py-4 px-1 text-sm"
+						>
+							Dashboard
+						</button>
+						<button
+							id="ds-tab-model-lab"
+							data-ds-tab="model-lab"
+							class="ds-nav-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 py-4 px-1 text-sm"
+						>
+							Model Lab
+						</button>
+					</nav>
+				</div>
+			</div>
+
+			<main class="py-8">
+				<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+					<!-- Dashboard Page -->
+					<div id="ds-page-dashboard" class="ds-page-content space-y-8">
+						<!-- Model Selection -->
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">
+								Active Model Selection
+							</h3>
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+								<!-- NextItNet Card -->
+								<div
+									id="modelCard-nextitnet"
+									class="model-card border-2 border-emerald-500 bg-emerald-50 rounded-xl p-4 cursor-pointer transition hover:shadow-md"
+								>
+									<div class="flex items-center justify-between mb-2">
+										<div class="flex items-center space-x-2">
+											<i
+												data-lucide="brain"
+												class="w-6 h-6 text-emerald-600"
+											></i>
+											<span class="font-semibold text-gray-900">NextItNet</span>
+										</div>
+										<span
+											id="status-nextitnet"
+											class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full"
+											>Active</span
+										>
+									</div>
+									<p class="text-sm text-gray-600">
+										Sequential recommendation using dilated causal convolutions.
+										Best for users with viewing history.
+									</p>
+									<div class="mt-3 text-xs text-gray-500">
+										<span class="font-medium">Type:</span> Collaborative
+										Filtering
+									</div>
+								</div>
+
+								<!-- LLM Card -->
+								<div
+									id="modelCard-llm"
+									class="model-card border-2 border-gray-200 bg-white rounded-xl p-4 cursor-pointer transition hover:shadow-md hover:border-gray-300"
+								>
+									<div class="flex items-center justify-between mb-2">
+										<div class="flex items-center space-x-2">
+											<i
+												data-lucide="sparkles"
+												class="w-6 h-6 text-purple-600"
+											></i>
+											<span class="font-semibold text-gray-900"
+												>LLM (Gemini)</span
+											>
+										</div>
+										<span
+											id="status-llm"
+											class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full"
+											>Standby</span
+										>
+									</div>
+									<p class="text-sm text-gray-600">
+										AI-powered content-based recommendations using OpenRouter.
+										Works without user history.
+									</p>
+									<div class="mt-3 text-xs text-gray-500">
+										<span class="font-medium">Type:</span> Content-Based (LLM)
+									</div>
+								</div>
+								<div
+									id="modelCard-bivae"
+									class="model-card border-2 border-gray-200 bg-white rounded-xl p-4 cursor-pointer transition hover:shadow-md hover:border-gray-300"
+								>
+									<div class="flex items-center justify-between mb-2">
+										<div class="flex items-center space-x-2">
+											<i
+												data-lucide="layers"
+												class="w-6 h-6 text-indigo-600"
+											></i>
+											<span class="font-semibold text-gray-900">BiVAE</span>
+										</div>
+										<span
+											id="status-bivae"
+											class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full"
+											>Standby</span
+										>
+									</div>
+									<p class="text-sm text-gray-600">
+										Generative collaborative filtering using Variational
+										Autoencoder. Captures complex non-linear user-item
+										interactions.
+									</p>
+									<div class="mt-3 text-xs text-gray-500">
+										<span class="font-medium">Type:</span> Generative CF
+									</div>
+								</div>
+							</div>
+							<p class="text-sm text-gray-500 mt-4">
+								Click on a model card to switch the active recommendation
+								engine.
+							</p>
+						</div>
+
+						<!-- Statistics Cards -->
+						<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<div class="p-3 bg-emerald-100 rounded-lg inline-block">
+									<i data-lucide="users" class="h-6 w-6 text-emerald-600"></i>
+								</div>
+								<p
+									class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-4"
+								>
+									Users
+								</p>
+								<p class="text-3xl font-semibold text-gray-900">671</p>
+								<p class="text-sm text-emerald-600 mt-1">
+									Active users in dataset
+								</p>
+							</div>
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<div class="p-3 bg-blue-100 rounded-lg inline-block">
+									<i data-lucide="film" class="h-6 w-6 text-blue-600"></i>
+								</div>
+								<p
+									class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-4"
+								>
+									Movies
+								</p>
+								<p
+									class="text-3xl font-semibold text-gray-900"
+									id="dsMovieCount"
+								>
+									3,497
+								</p>
+								<p class="text-sm text-emerald-600 mt-1">In vocabulary</p>
+							</div>
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<div class="p-3 bg-amber-100 rounded-lg inline-block">
+									<i data-lucide="star" class="h-6 w-6 text-amber-600"></i>
+								</div>
+								<p
+									class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-4"
+								>
+									Ratings
+								</p>
+								<p class="text-3xl font-semibold text-gray-900">100,004</p>
+								<p class="text-sm text-emerald-600 mt-1">Total interactions</p>
+							</div>
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<div class="p-3 bg-purple-100 rounded-lg inline-block">
+									<i data-lucide="activity" class="h-6 w-6 text-purple-600"></i>
+								</div>
+								<p
+									class="text-xs font-medium text-gray-500 uppercase tracking-wider mt-4"
+								>
+									Sessions
+								</p>
+								<p
+									class="text-3xl font-semibold text-gray-900"
+									id="dsSessionCount"
+								>
+									0
+								</p>
+								<p class="text-sm text-purple-600 mt-1">Active user sessions</p>
+							</div>
+						</div>
+
+						<!-- Active Models Table -->
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">
+								Active Models
+							</h3>
+							<div class="overflow-x-auto">
+								<table class="min-w-full divide-y divide-gray-200">
+									<thead>
+										<tr
+											class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+										>
+											<th class="pb-3">Model Name</th>
+											<th class="pb-3">Version</th>
+											<th class="pb-3">Status</th>
+											<th class="pb-3">NDCG@10</th>
+											<th class="pb-3">Last Trained</th>
+										</tr>
+									</thead>
+									<tbody class="divide-y divide-gray-200">
+										<tr>
+											<td class="py-3 font-medium text-gray-900">NextItNet</td>
+											<td class="py-3 text-gray-600">v3.0</td>
+											<td class="py-3">
+												<span
+													class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full"
+													>Active</span
+												>
+											</td>
+											<td class="py-3 text-gray-900 font-semibold">0.4105</td>
+											<td class="py-3 text-gray-600">2025-11-08 22:00 UTC</td>
+										</tr>
+										<tr>
+											<td class="py-3 font-medium text-gray-900">
+												LLM Recommender
+											</td>
+											<td class="py-3 text-gray-600">v1.5</td>
+											<td class="py-3">
+												<span
+													class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full"
+													>Testing</span
+												>
+											</td>
+											<td class="py-3 text-gray-900 font-semibold">0.3980</td>
+											<td class="py-3 text-gray-600">2025-11-10 08:15 UTC</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<!-- Production Metrics -->
+						<div class="bg-gray-800 text-white p-4 rounded-lg shadow-sm">
+							<div
+								class="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0 text-sm font-medium"
+							>
+								<p>
+									Production Metrics:
+									<span class="text-emerald-400" id="dsProdRequests"
+										>54,320 requests today</span
+									>
+								</p>
+								<p>
+									Avg Latency:
+									<span class="text-emerald-400" id="dsProdLatency">38ms</span>
+								</p>
+								<p>
+									Success Rate:
+									<span class="text-emerald-400" id="dsProdSuccess">99.7%</span>
+								</p>
+							</div>
+						</div>
+
+						<!-- Training and Comparison Section -->
+						<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+							<!-- Start New Training -->
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<h3 class="text-lg font-semibold text-gray-900 mb-4">
+									Start New Training
+								</h3>
+								<form id="trainingForm" class="space-y-4">
+									<div>
+										<label class="block text-sm font-medium text-gray-700 mb-1"
+											>Model</label
+										>
+										<select
+											id="trainingModel"
+											class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+										>
+											<option value="nextitnet">NextItNet</option>
+											<option value="bivae" disabled>
+												BiVAE (Coming Soon)
+											</option>
+										</select>
+									</div>
+									<div>
+										<label class="block text-sm font-medium text-gray-700 mb-1"
+											>Version Name</label
+										>
+										<input
+											type="text"
+											id="trainingVersion"
+											placeholder="e.g., v2.2-new-features"
+											class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+										/>
+									</div>
+									<div class="grid grid-cols-2 gap-4">
+										<div>
+											<label
+												class="block text-sm font-medium text-gray-700 mb-1"
+												>Epochs</label
+											>
+											<input
+												type="number"
+												id="trainingEpochs"
+												value="100"
+												min="1"
+												class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+											/>
+										</div>
+										<div>
+											<label
+												class="block text-sm font-medium text-gray-700 mb-1"
+												>Learning Rate</label
+											>
+											<input
+												type="number"
+												id="trainingLR"
+												value="0.001"
+												step="0.0001"
+												class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+											/>
+										</div>
+									</div>
+									<div class="flex items-center space-x-4">
+										<label class="flex items-center space-x-2 cursor-pointer">
+											<input
+												type="checkbox"
+												id="trainingGPU"
+												checked
+												class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+											/>
+											<span class="text-sm text-gray-700">Use GPU</span>
+										</label>
+										<label class="flex items-center space-x-2 cursor-pointer">
+											<input
+												type="checkbox"
+												id="trainingEarlyStopping"
+												checked
+												class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+											/>
+											<span class="text-sm text-gray-700">Early Stopping</span>
+										</label>
+									</div>
+									<button
+										type="submit"
+										class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg transition"
+									>
+										Start Training
+									</button>
+								</form>
+							</div>
+
+							<!-- Model Comparison Chart -->
+							<div class="bg-white p-6 rounded-xl shadow-sm">
+								<h3 class="text-lg font-semibold text-gray-900 mb-4">
+									Model Comparison: NDCG@K
+								</h3>
+								<div
+									style="height: 300px; max-height: 300px; position: relative"
+								>
+									<canvas id="comparisonChart"></canvas>
+								</div>
+							</div>
+						</div>
+
+						<!-- System Status (moved to bottom) -->
+						<div class="bg-gray-800 text-white p-4 rounded-lg shadow-sm">
+							<div
+								class="flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0 text-sm font-medium"
+							>
+								<p><strong>NextItNet:</strong> 1,195,945 parameters</p>
+								<p>
+									Device:
+									<span class="text-green-400" id="dsDeviceStatus"
+										>Checking...</span
+									>
+								</p>
+								<p>
+									Active Model:
+									<span class="text-amber-400" id="dsActiveModel"
+										>Loading...</span
+									>
+								</p>
+								<p>
+									API Status:
+									<span class="text-green-400" id="dsApiStatus"
+										>Checking...</span
+									>
+								</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Model Lab Page -->
+					<div id="ds-page-model-lab" class="ds-page-content space-y-8 hidden">
+						<!-- Active Model Info -->
+						<div
+							class="bg-white p-6 rounded-xl shadow-sm border-l-4"
+							id="activeModelInfo"
+						>
+							<div class="flex items-center justify-between mb-4">
+								<h3 class="text-xl font-semibold text-gray-900">
+									Currently Active:
+									<span id="labActiveModelName">NextItNet</span>
+								</h3>
+								<span
+									id="labActiveModelBadge"
+									class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full"
+									>In Production</span
+								>
+							</div>
+							<p class="text-sm text-gray-600" id="labActiveModelDesc">
+								Sequential recommendation model using dilated causal
+								convolutions
+							</p>
+						</div>
+
+						<!-- Model Details -->
+						<div class="space-y-6">
+							<!-- NextItNet Details -->
+							<details
+								class="bg-white rounded-xl shadow-sm overflow-hidden"
+								id="nextitnetDetails"
+								open
+							>
+								<summary
+									class="p-6 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+								>
+									<div class="flex items-center space-x-4">
+										<i data-lucide="box" class="h-6 w-6 text-blue-600"></i>
+										<div>
+											<span class="text-lg font-semibold text-gray-900"
+												>NextItNet</span
+											>
+											<span class="ml-3 text-sm text-gray-500">1 Model</span>
+										</div>
+									</div>
+									<i
+										data-lucide="chevron-down"
+										class="h-5 w-5 text-gray-400"
+									></i>
+								</summary>
+								<div class="p-6 pt-0 border-t border-gray-100">
+									<!-- NextItNet v3.0 -->
+									<div class="mt-4 border border-gray-200 rounded-lg p-5">
+										<div class="flex justify-between items-start mb-4">
+											<div>
+												<h4 class="text-lg font-semibold text-gray-900">
+													NextItNet v3.0
+												</h4>
+												<div class="mt-2 text-sm text-gray-600 space-y-1">
+													<p><strong>Trained:</strong> 2025-11-08 22:00 UTC</p>
+													<p><strong>Epochs:</strong> 200</p>
+													<p><strong>Time:</strong> 2h 10m</p>
+												</div>
+											</div>
+											<span
+												class="px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full"
+												>Active</span
+											>
+										</div>
+
+										<!-- Performance Metrics -->
+										<div class="mt-4">
+											<h5 class="text-sm font-semibold text-gray-700 mb-3">
+												Performance
+											</h5>
+											<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">NDCG@10:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.4105
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">Prec@10:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.2633
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">Rec@10:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.1879
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">HR@10:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.6620
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">MAP:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.3001
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">Cov:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.4950
+													</p>
+												</div>
+											</div>
+										</div>
+
+										<!-- Loss Metrics -->
+										<div class="mt-4 grid grid-cols-2 gap-4">
+											<div>
+												<p class="text-sm text-gray-700">
+													<strong>Train Loss:</strong>
+													<span class="text-gray-900">0.0450</span>
+												</p>
+											</div>
+											<div>
+												<p class="text-sm text-gray-700">
+													<strong>Valid Loss:</strong>
+													<span class="text-gray-900">0.0512</span>
+												</p>
+											</div>
+										</div>
+
+										<!-- Action Buttons -->
+										<div class="mt-6 flex space-x-3">
+											<button
+												class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+											>
+												View Full Report
+											</button>
+											<button
+												class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition"
+											>
+												Retrain
+											</button>
+											<button
+												class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium rounded-lg transition"
+											>
+												Deactivate
+											</button>
+										</div>
+									</div>
+								</div>
+							</details>
+
+							<!-- BiVAE Details -->
+							<details
+								class="bg-white rounded-xl shadow-sm overflow-hidden"
+								id="bivaeDetails"
+							>
+								<summary
+									class="p-6 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+								>
+									<div class="flex items-center space-x-4">
+										<i data-lucide="layers" class="h-6 w-6 text-indigo-600"></i>
+										<div>
+											<span class="text-lg font-semibold text-gray-900"
+												>BiVAE</span
+											>
+											<span class="ml-3 text-sm text-gray-500">Ready</span>
+										</div>
+									</div>
+									<i
+										data-lucide="chevron-down"
+										class="h-5 w-5 text-gray-400"
+									></i>
+								</summary>
+								<div class="p-6 pt-0 border-t border-gray-100">
+									<div class="mt-4 border border-gray-200 rounded-lg p-5">
+										<div class="flex justify-between items-start mb-4">
+											<div>
+												<h4 class="text-lg font-semibold text-gray-900">
+													BiVAE v1.0
+												</h4>
+												<div class="mt-2 text-sm text-gray-600 space-y-1">
+													<p><strong>Architecture:</strong> Bilateral VAE</p>
+													<p><strong>Encoder:</strong> [100] hidden units</p>
+													<p><strong>Likelihood:</strong> Poisson</p>
+												</div>
+											</div>
+											<span
+												class="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm font-medium rounded-full"
+												>Ready</span
+											>
+										</div>
+									</div>
+								</div>
+							</details>
+
+							<!-- LLM Details -->
+							<details
+								class="bg-white rounded-xl shadow-sm overflow-hidden"
+								id="llmDetails"
+							>
+								<summary
+									class="p-6 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+								>
+									<div class="flex items-center space-x-4">
+										<i
+											data-lucide="sparkles"
+											class="h-6 w-6 text-purple-600"
+										></i>
+										<div>
+											<span class="text-lg font-semibold text-gray-900"
+												>LLM Recommender</span
+											>
+											<span class="ml-3 text-sm text-gray-500">2 Models</span>
+										</div>
+									</div>
+									<i
+										data-lucide="chevron-down"
+										class="h-5 w-5 text-gray-400"
+									></i>
+								</summary>
+								<div class="p-6 pt-0 border-t border-gray-100">
+									<!-- LLM v1.5 -->
+									<div class="mt-4 border border-gray-200 rounded-lg p-5">
+										<div class="flex justify-between items-start mb-4">
+											<div>
+												<h4 class="text-lg font-semibold text-gray-900">
+													LLM Recommender v1.5
+												</h4>
+												<div class="mt-2 text-sm text-gray-600 space-y-1">
+													<p><strong>Provider:</strong> OpenRouter</p>
+													<p><strong>Model:</strong> Gemini 2.5 Flash</p>
+													<p><strong>Type:</strong> Content-Based AI</p>
+												</div>
+											</div>
+											<span
+												class="px-3 py-1 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-full"
+												>Testing</span
+											>
+										</div>
+
+										<!-- Performance Metrics -->
+										<div class="mt-4">
+											<h5 class="text-sm font-semibold text-gray-700 mb-3">
+												Performance
+											</h5>
+											<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">NDCG@10:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														0.3980
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">Relevance:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														High
+													</p>
+												</div>
+												<div class="bg-gray-50 p-3 rounded">
+													<p class="text-xs text-gray-500">Avg Latency:</p>
+													<p class="text-lg font-semibold text-gray-900">
+														1.2s
+													</p>
+												</div>
+											</div>
+										</div>
+
+										<!-- Action Buttons -->
+										<div class="mt-6 flex space-x-3">
+											<button
+												class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+											>
+												View Full Report
+											</button>
+											<button
+												class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition"
+											>
+												Configure
+											</button>
+										</div>
+									</div>
+								</div>
+							</details>
+						</div>
+
+						<!-- LLM Test Interface -->
+						<div class="bg-white p-6 rounded-xl shadow-sm">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">
+								Test LLM Recommendations
+							</h3>
+							<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+								<div class="space-y-4">
+									<div>
+										<label class="block text-sm font-medium text-gray-700"
+											>Movie Name</label
+										>
+										<input
+											type="text"
+											id="llmTestMovie"
+											placeholder="e.g., Inception"
+											class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+										/>
+									</div>
+									<div>
+										<label class="block text-sm font-medium text-gray-700"
+											>Genre</label
+										>
+										<input
+											type="text"
+											id="llmTestGenre"
+											placeholder="e.g., Sci-Fi, Action"
+											class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+										/>
+									</div>
+									<div>
+										<label class="block text-sm font-medium text-gray-700"
+											>Overview</label
+										>
+										<textarea
+											id="llmTestOverview"
+											rows="3"
+											placeholder="Brief description..."
+											class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+										></textarea>
+									</div>
+									<button
+										id="testLlmBtn"
+										class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition"
+									>
+										Get LLM Recommendations
+									</button>
+								</div>
+								<div>
+									<label class="block text-sm font-medium text-gray-700 mb-2"
+										>Results</label
+									>
+									<div
+										id="llmTestResults"
+										class="bg-gray-50 rounded-lg p-4 h-64 overflow-y-auto text-sm"
+									>
+										<p class="text-gray-500">
+											Enter a movie and click the button to test.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</main>
+		</div>
+
+		<!-- Toast Container -->
+		<div
+			id="toastContainer"
+			class="fixed bottom-4 right-4 space-y-2 z-50"
+		></div>
+
+		<!-- Footer -->
+		<footer
+			class="bg-gray-800 border-t border-gray-700 py-4 px-6 text-center text-gray-400 text-sm"
+		>
+			<p>
+				Powered by <strong class="text-amber-400">NextItNet</strong> +
+				<strong class="text-purple-400">LLM (OpenRouter)</strong> | Unified
+				Movie Recommendation System
+			</p>
+		</footer>
+
+		<!-- Scripts -->
+		<script src="/static/js/app.js?v=9"></script>
+		<script>
+			function logout() {
+				sessionStorage.removeItem("userRole");
+				window.location.href = "/login";
+			}
+
+			// Initialize Model Comparison Chart
+			let comparisonChart = null;
+			function initComparisonChart() {
+				const ctx = document.getElementById("comparisonChart");
+				if (!ctx) return;
+
+				if (comparisonChart) {
+					comparisonChart.destroy();
+				}
+
+				comparisonChart = new Chart(ctx, {
+					type: "line",
+					data: {
+						labels: ["K=5", "K=10", "K=20", "K=50", "K=100"],
+						datasets: [
+							{
+								label: "BiVAE v2.1",
+								data: [0.38, 0.43, 0.52, 0.62, 0.65],
+								borderColor: "rgb(16, 185, 129)",
+								backgroundColor: "rgba(16, 185, 129, 0.1)",
+								tension: 0.4,
+							},
+							{
+								label: "LLM v1.5",
+								data: [0.32, 0.4, 0.43, 0.45, 0.46],
+								borderColor: "rgb(251, 191, 36)",
+								backgroundColor: "rgba(251, 191, 36, 0.1)",
+								tension: 0.4,
+							},
+							{
+								label: "NextItNet v3.0",
+								data: [0.35, 0.41, 0.42, 0.43, 0.44],
+								borderColor: "rgb(59, 130, 246)",
+								backgroundColor: "rgba(59, 130, 246, 0.1)",
+								tension: 0.4,
+							},
+						],
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: {
+								position: "top",
+								labels: {
+									boxWidth: 12,
+									padding: 15,
+									font: {
+										size: 11,
+									},
+								},
+							},
+						},
+						scales: {
+							y: {
+								beginAtZero: true,
+								max: 0.7,
+								ticks: {
+									font: {
+										size: 10,
+									},
+								},
+								title: {
+									display: true,
+									text: "NDCG Score",
+									font: {
+										size: 11,
+									},
+								},
+							},
+							x: {
+								ticks: {
+									font: {
+										size: 10,
+									},
+								},
+								title: {
+									display: true,
+									text: "Top-K",
+									font: {
+										size: 11,
+									},
+								},
+							},
+						},
+						elements: {
+							line: {
+								borderWidth: 2,
+							},
+							point: {
+								radius: 3,
+								hitRadius: 10,
+								hoverRadius: 5,
+							},
+						},
+					},
+				});
+			}
+
+			// Initialize chart when Data Scientist tab is opened
+			document.addEventListener("DOMContentLoaded", function () {
+				const userRole = sessionStorage.getItem("userRole");
+				if (userRole === "datascientist") {
+					setTimeout(initComparisonChart, 500);
+				}
+
+				// Also init when switching to DS tab
+				const dsTab = document.getElementById("dataScientistTab");
+				if (dsTab) {
+					dsTab.addEventListener("click", function () {
+						setTimeout(initComparisonChart, 500);
+					});
+				}
+
+				// Handle Training Form Submission
+				const trainingForm = document.getElementById("trainingForm");
+				if (trainingForm) {
+					trainingForm.addEventListener("submit", async function (e) {
+						e.preventDefault();
+
+						const formData = {
+							model: document.getElementById("trainingModel").value,
+							version: document.getElementById("trainingVersion").value,
+							epochs: parseInt(document.getElementById("trainingEpochs").value),
+							learning_rate: parseFloat(
+								document.getElementById("trainingLR").value
+							),
+							use_gpu: document.getElementById("trainingGPU").checked,
+							early_stopping: document.getElementById("trainingEarlyStopping")
+								.checked,
+						};
+
+						// Validation
+						if (!formData.version || formData.version.trim() === "") {
+							alert("Please enter a version name");
+							return;
+						}
+						if (formData.epochs < 1) {
+							alert("Epochs must be at least 1");
+							return;
+						}
+
+						// Show confirmation
+						const confirmMsg = `Start training ${formData.model} v${formData.version} for ${formData.epochs} epochs?\n\nThis will run in the background and may take 1-3 hours.`;
+						if (!confirm(confirmMsg)) return;
+
+						// Disable submit button
+						const submitBtn = trainingForm.querySelector(
+							'button[type="submit"]'
+						);
+						const originalText = submitBtn.textContent;
+						submitBtn.disabled = true;
+						submitBtn.textContent = "Starting...";
+
+						try {
+							// Start training
+							const response = await fetch("/api/training/start", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify(formData),
+								credentials: "include",
+							});
+
+							const result = await response.json();
+
+							if (response.ok && result.success) {
+								alert(
+									`Training started successfully!\n\nJob ID: ${result.job_id}\n\nYou can monitor progress in the console or check the training status API.`
+								);
+								console.log("Training job started:", result);
+
+								// Start polling for progress
+								pollTrainingProgress(result.job_id);
+
+								// Reset form
+								trainingForm.reset();
+								document.getElementById("trainingEpochs").value = "100";
+								document.getElementById("trainingLR").value = "0.001";
+							} else {
+								alert(
+									`Failed to start training: ${
+										result.detail || result.message || "Unknown error"
+									}`
+								);
+							}
+						} catch (error) {
+							console.error("Training start error:", error);
+							alert(`Error starting training: ${error.message}`);
+						} finally {
+							submitBtn.disabled = false;
+							submitBtn.textContent = originalText;
+						}
+					});
+				}
+
+				// Poll training progress
+				let trainingPollInterval = null;
+				function pollTrainingProgress(jobId) {
+					// Clear any existing interval
+					if (trainingPollInterval) {
+						clearInterval(trainingPollInterval);
+					}
+
+					// Poll every 5 seconds
+					trainingPollInterval = setInterval(async () => {
+						try {
+							const response = await fetch(`/api/training/status/${jobId}`);
+							const result = await response.json();
+
+							if (result.success && result.job) {
+								const job = result.job;
+								console.log(
+									`Training Progress: ${job.progress.toFixed(1)}% - Epoch ${
+										job.current_epoch
+									}/${job.total_epochs} - Status: ${job.status}`
+								);
+
+								if (job.metrics) {
+									console.log(
+										`  Train Loss: ${
+											job.metrics.train_loss?.toFixed(4) || "N/A"
+										}, Val Loss: ${job.metrics.val_loss?.toFixed(4) || "N/A"}`
+									);
+								}
+
+								// Stop polling if completed or failed
+								if (
+									job.status === "completed" ||
+									job.status === "failed" ||
+									job.status === "cancelled"
+								) {
+									clearInterval(trainingPollInterval);
+									trainingPollInterval = null;
+
+									if (job.status === "completed") {
+										console.log(
+											`✅ Training completed! Best metrics:`,
+											job.best_metrics
+										);
+										alert(
+											`Training completed successfully!\n\nBest validation loss: ${
+												job.best_metrics?.best_val_loss?.toFixed(4) || "N/A"
+											}\nModel saved to: ${job.model_path}`
+										);
+									} else if (job.status === "failed") {
+										console.error(`❌ Training failed: ${job.error_message}`);
+										alert(`Training failed: ${job.error_message}`);
+									} else if (job.status === "cancelled") {
+										console.log(`⚠️ Training cancelled`);
+										alert("Training was cancelled");
+									}
+								}
+							}
+						} catch (error) {
+							console.error("Error polling training status:", error);
+						}
+					}, 5000); // Poll every 5 seconds
+				}
+			});
+		</script>
+	</body>
+</html>

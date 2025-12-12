@@ -1,8 +1,15 @@
+"""
+DSPy-based Movie Recommendation System
+Using Language Models for content-based movie recommendations
+"""
+
 import dspy
 from pydantic import BaseModel, Field
 
 
 class MovieRecommendation(BaseModel):
+    """Single movie recommendation structure."""
+
     movie_name: str = Field(description="Tên phim được đề xuất")
     movie_genre: str = Field(description="Thể loại của phim")
     movie_overview: str = Field(description="Mô tả tóm tắt về phim")
@@ -67,14 +74,16 @@ class MovieRecommendationSignature(dspy.Signature):
 
 
 class MovieRecommendationProgram(dspy.Module):
+    """DSPy Module for movie recommendations using Chain of Thought."""
+
     def __init__(self):
         super().__init__()
-
         self._module = dspy.ChainOfThought(MovieRecommendationSignature)
 
     def forward(
         self, movie_name: str, movie_genre: str, movie_overview: str
     ) -> dspy.Prediction:
+        """Synchronous forward pass."""
         return self._module(
             movie_name=movie_name,
             movie_genre=movie_genre,
@@ -84,6 +93,7 @@ class MovieRecommendationProgram(dspy.Module):
     async def aforward(
         self, movie_name: str, movie_genre: str, movie_overview: str
     ) -> dspy.Prediction:
+        """Asynchronous forward pass."""
         return await self._module.acall(
             movie_name=movie_name,
             movie_genre=movie_genre,
