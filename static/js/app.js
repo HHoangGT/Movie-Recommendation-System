@@ -191,10 +191,36 @@ function renderMovieCard(movie) {
     `;
 }
 
+// function renderRecommendationCard(rec, index) {
+//     const source = rec.source || state.activeModel;
+//     const scoreText = rec.score ? `Score: ${(rec.score * 100).toFixed(1)}%` : '';
+//     const overview = rec.overview || '';
+
+//     return `
+//         <div class="rec-card">
+//             <div class="flex items-start">
+//                 <div class="rank">${index + 1}</div>
+//                 <div class="flex-1">
+//                     <div class="flex items-center justify-between">
+//                         <div class="title">${rec.title || 'Unknown'}</div>
+//                         <span class="source-badge ${source}">${source === 'llm' ? 'LLM' : 'NextItNet'}</span>
+//                     </div>
+//                     ${scoreText ? `<div class="score">${scoreText}</div>` : ''}
+//                     ${overview ? `<div class="overview">${overview.substring(0, 150)}${overview.length > 150 ? '...' : ''}</div>` : ''}
+//                 </div>
+//             </div>
+//         </div>
+//     `;
+// }
 function renderRecommendationCard(rec, index) {
     const source = rec.source || state.activeModel;
     const scoreText = rec.score ? `Score: ${(rec.score * 100).toFixed(1)}%` : '';
     const overview = rec.overview || '';
+
+    // Fix: Map source codes to display names
+    let sourceLabel = 'NextItNet';
+    if (source === 'llm') sourceLabel = 'LLM';
+    if (source === 'bivae') sourceLabel = 'BiVAE';
 
     return `
         <div class="rec-card">
@@ -203,7 +229,7 @@ function renderRecommendationCard(rec, index) {
                 <div class="flex-1">
                     <div class="flex items-center justify-between">
                         <div class="title">${rec.title || 'Unknown'}</div>
-                        <span class="source-badge ${source}">${source === 'llm' ? 'LLM' : 'NextItNet'}</span>
+                        <span class="source-badge ${source}">${sourceLabel}</span>
                     </div>
                     ${scoreText ? `<div class="score">${scoreText}</div>` : ''}
                     ${overview ? `<div class="overview">${overview.substring(0, 150)}${overview.length > 150 ? '...' : ''}</div>` : ''}

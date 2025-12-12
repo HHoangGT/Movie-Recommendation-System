@@ -97,7 +97,7 @@ def run_experiment():
         encoder_structure=[100],  # Hidden layer size
         act_fn="tanh",  # Activation function
         likelihood="pois",  # Poisson likelihood (tốt cho implicit feedback)
-        n_epochs=50,  # Số vòng lặp (có thể tăng lên 100 nếu cần)
+        n_epochs=30,  # Số vòng lặp (có thể tăng lên 100 nếu cần)
         batch_size=128,
         learning_rate=0.001,
         seed=123,
@@ -122,7 +122,7 @@ def run_experiment():
     # 6. Save Model (Quan trọng cho Production)
     print("\n💾 Saving trained model for Production...")
     save_path = os.path.join(MODELS_DIR, "bivae_context")
-    bivae.save(save_path)
+    bivae.save(save_path, save_trainset=True)
     print(f"   ✅ Model saved to: {save_path}")
 
 
